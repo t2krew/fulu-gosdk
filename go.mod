@@ -1,4 +1,4 @@
-module fulu-gosdk
+module github.com/t2krew/fulu-gosdk
 
 go 1.18
 
