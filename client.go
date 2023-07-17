@@ -203,25 +203,6 @@ func (c *Client) newParams(method Method, bizContent string) *ReqParams {
 	}
 }
 
-//func (c *Client) getOutgoingDataWithSign(params *ReqParams) (JSONOutput *ParamsOutput, signStr string, err error) {
-//	sign, signStr, err := c.getSign(params)
-//	if err != nil {
-//		return nil, "", err
-//	}
-//	return &ParamsOutput{
-//		AppKey:       params.appKey,
-//		Method:       params.method,
-//		Timestamp:    params.timestamp,
-//		Version:      params.version,
-//		Format:       params.format,
-//		Charset:      params.charset,
-//		SignType:     params.signType,
-//		AppAuthToken: params.appAuthToken,
-//		BizContent:   params.bizContent,
-//		Sign:         sign,
-//	}, signStr, nil
-//}
-
 func getSignWithSecret(params *ReqParams, secret string) (sign string, signStr string, err error) {
 	var signdata map[string]string
 
