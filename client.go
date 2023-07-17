@@ -37,24 +37,7 @@ const (
 	TimestampFormat = "2006-01-02 15:04:05"
 )
 
-type Params struct {
-	appKey       string
-	method       Method
-	timestamp    string
-	version      string
-	format       string
-	charset      string
-	signType     string
-	sign         string
-	appAuthToken string
-	bizContent   string
-}
-
-func (p *Params) SetSign(sign string) {
-	p.sign = sign
-}
-
-type ParamsOutput struct {
+type ReqParams struct {
 	AppKey       string `json:"app_key"`
 	Method       Method `json:"method"`
 	Timestamp    string `json:"timestamp"`
@@ -65,22 +48,6 @@ type ParamsOutput struct {
 	Sign         string `json:"sign"`
 	AppAuthToken string `json:"app_auth_token"`
 	BizContent   string `json:"biz_content"`
-}
-
-func (p *Params) MarshalJSON() ([]byte, error) {
-	var params = &ParamsOutput{
-		AppKey:       p.appKey,
-		Method:       p.method,
-		Timestamp:    p.timestamp,
-		Version:      p.version,
-		Format:       p.format,
-		Charset:      p.charset,
-		SignType:     p.signType,
-		Sign:         p.sign,
-		AppAuthToken: p.appAuthToken,
-		BizContent:   p.bizContent,
-	}
-	return jsoniter.Marshal(params)
 }
 
 type RespData struct {
@@ -127,15 +94,17 @@ func (c *Client) Request(ctx context.Context, method Method, bizContent interfac
 	}
 	var params = c.newParams(method, rawContent)
 
-	outgoing, signStr, err := c.getOutgoingDataWithSign(params)
+	sign, signStr, err := c.getSign(params)
 	if err != nil {
 		return err
 	}
 	if c.debug {
-		log.Printf("[fulu-sdk] [%s] sign_str: %s, sign: %s", method, signStr, outgoing.Sign)
+		log.Printf("[fulu-sdk] [%s] sign_str: %s, sign: %s", method, signStr, sign)
 	}
 
-	resp, err := c.httpCli.SetDebug(c.debug).R().SetContext(ctx).SetBody(outgoing).Post(c.cfg.Endpoint)
+	params.Sign = sign
+
+	resp, err := c.httpCli.SetDebug(c.debug).R().SetContext(ctx).SetBody(params).Post(c.cfg.Endpoint)
 	if err != nil {
 		return err
 	}
@@ -216,44 +185,44 @@ func newclient(config Config, cli *resty.Client) (*Client, error) {
 	}, nil
 }
 
-func (c *Client) getSign(params *Params) (sign string, signStr string, err error) {
+func (c *Client) getSign(params *ReqParams) (sign string, signStr string, err error) {
 	return getSignWithSecret(params, c.cfg.AppSecret)
 }
 
-func (c *Client) newParams(method Method, bizContent string) *Params {
-	return &Params{
-		appKey:       c.appkey,
-		method:       method,
-		timestamp:    time.Now().Format(TimestampFormat),
-		version:      c.cfg.Version,
-		format:       c.cfg.Format,
-		charset:      c.cfg.Charset,
-		signType:     c.cfg.SignType,
-		bizContent:   bizContent,
-		appAuthToken: c.cfg.AppAuthToken,
+func (c *Client) newParams(method Method, bizContent string) *ReqParams {
+	return &ReqParams{
+		AppKey:       c.appkey,
+		Method:       method,
+		Timestamp:    time.Now().Format(TimestampFormat),
+		Version:      c.cfg.Version,
+		Format:       c.cfg.Format,
+		Charset:      c.cfg.Charset,
+		SignType:     c.cfg.SignType,
+		BizContent:   bizContent,
+		AppAuthToken: c.cfg.AppAuthToken,
 	}
 }
 
-func (c *Client) getOutgoingDataWithSign(params *Params) (JSONOutput *ParamsOutput, signStr string, err error) {
-	sign, signStr, err := c.getSign(params)
-	if err != nil {
-		return nil, "", err
-	}
-	return &ParamsOutput{
-		AppKey:       params.appKey,
-		Method:       params.method,
-		Timestamp:    params.timestamp,
-		Version:      params.version,
-		Format:       params.format,
-		Charset:      params.charset,
-		SignType:     params.signType,
-		AppAuthToken: params.appAuthToken,
-		BizContent:   params.bizContent,
-		Sign:         sign,
-	}, signStr, nil
-}
+//func (c *Client) getOutgoingDataWithSign(params *ReqParams) (JSONOutput *ParamsOutput, signStr string, err error) {
+//	sign, signStr, err := c.getSign(params)
+//	if err != nil {
+//		return nil, "", err
+//	}
+//	return &ParamsOutput{
+//		AppKey:       params.appKey,
+//		Method:       params.method,
+//		Timestamp:    params.timestamp,
+//		Version:      params.version,
+//		Format:       params.format,
+//		Charset:      params.charset,
+//		SignType:     params.signType,
+//		AppAuthToken: params.appAuthToken,
+//		BizContent:   params.bizContent,
+//		Sign:         sign,
+//	}, signStr, nil
+//}
 
-func getSignWithSecret(params *Params, secret string) (sign string, signStr string, err error) {
+func getSignWithSecret(params *ReqParams, secret string) (sign string, signStr string, err error) {
 	var signdata map[string]string
 
 	raw, err := jsoniter.Marshal(params)
